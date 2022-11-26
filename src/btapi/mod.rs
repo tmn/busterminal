@@ -1,10 +1,3 @@
-pub mod btapi;
-pub mod destinationdisplay;
-pub mod estimatedcall;
-pub mod journeypattern;
-pub mod line;
-pub mod qyay;
-pub mod servicejourney;
-pub mod stopplace;
-pub mod stopplaceresponse;
+pub mod model;
+pub mod request;
 pub mod wrapper;
