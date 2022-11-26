@@ -6,6 +6,7 @@ pub struct Wrapper<T> {
 }
 
 impl<T> Wrapper<T> {
+    #[allow(dead_code)]
     fn deserialize<'de, D>(deserializer: D) -> Result<T, D::Error>
     where
         T: Deserialize<'de>,

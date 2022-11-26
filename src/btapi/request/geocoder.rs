@@ -16,4 +16,6 @@ pub async fn get_autocomplete_stop_name(query: &str) -> Result<reqwest::Response
     Ok(res)
 }
 
+#[allow(dead_code)]
+#[allow(unused_variables)]
 pub async fn get_nearby_stops(location: &haversinerust::Location) {}

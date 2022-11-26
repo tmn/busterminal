@@ -46,8 +46,7 @@ pub async fn stop_place(
 }}
 "#,
         stop_id, start_time
-    )
-    .to_string();
+    );
 
     let res = client
         .post("https://api.entur.io/journey-planner/v3/graphql")
@@ -59,6 +58,7 @@ pub async fn stop_place(
     Ok(res)
 }
 
+#[allow(dead_code)]
 pub async fn journey(
     journey_id: &str,
     date_time: &str,
@@ -82,8 +82,7 @@ serviceJourney(id: "{}") {{
 
 "#,
         journey_id, date_time
-    )
-    .to_string();
+    );
 
     let res = client
         .post("https://api.entur.io/journey-planner/v3/graphql")

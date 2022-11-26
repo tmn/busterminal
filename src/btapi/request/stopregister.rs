@@ -1,5 +1,6 @@
 use reqwest;
 
+#[allow(dead_code)]
 pub async fn journey(stop_id: &str) -> Result<reqwest::Response, reqwest::Error> {
     let client = reqwest::Client::new();
 
@@ -25,8 +26,7 @@ pub async fn journey(stop_id: &str) -> Result<reqwest::Response, reqwest::Error>
 }}
 "#,
         stop_id
-    )
-    .to_string();
+    );
 
     let res = client
         .post("https://api.entur.io/stop-places/v1/graphql")
