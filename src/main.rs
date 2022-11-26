@@ -52,7 +52,9 @@ async fn main() -> serde_json::Result<()> {
         input.pop();
     }
 
-    println!("You picked: {} - {}", input, chrono::offset::Local::now());
+    // println!("You picked: {} - {}", input, chrono::offset::Local::now());
+    println!("");
+
     let inputNum: usize = input.parse::<usize>().unwrap();
     let feature: &btapi::model::Feature = &geo.features[inputNum];
 
@@ -67,11 +69,19 @@ async fn main() -> serde_json::Result<()> {
     .text()
     .await
     .unwrap();
-    println!("{}", res);
+    // println!("{}", res);
 
     let wrapper: btapi::wrapper::Wrapper<btapi::model::StopPlaceResponse> =
         serde_json::from_str(&res)?;
-    println!("{:?}", wrapper.data);
+
+    for (i, call) in wrapper.data.stopPlace.estimatedCalls.iter().enumerate() {
+        println!(
+            "{} {}",
+            call.serviceJourney.journeyPattern.line.publicCode, call.destinationDisplay.frontText
+        );
+        println!("{}\n", call.aimedArrivalTime);
+    }
+    //     println!("{:?}", wrapper.data);
 
     Ok(())
 }

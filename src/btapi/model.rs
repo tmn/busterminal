@@ -34,7 +34,7 @@ pub struct Line {
 pub struct Quay {
     pub id: String,
     pub name: String,
-    pub publicCode: String,
+    pub publicCode: Option<String>,
     pub description: Option<String>,
 }
 
