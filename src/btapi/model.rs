@@ -55,3 +55,33 @@ pub struct StopPlace {
 pub struct StopPlaceResponse {
     pub stopPlace: StopPlace,
 }
+
+/// Geocode types
+#[derive(Deserialize, Debug)]
+pub struct GeocodeResponse {
+    pub geocoding: Geocode,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Geocode {
+    pub features: Vec<Feature>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Feature {
+    pub geometry: Geometry,
+    pub properties: Stop,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Geometry {
+    pub coordinates: [f32; 2],
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Stop {
+    pub id: String,
+    pub name: String,
+    pub locality: String,
+    pub county: String,
+}
