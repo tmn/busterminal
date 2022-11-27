@@ -44,15 +44,32 @@ fn print_departures(departures: &[EstimatedCall]) {
         }
 
         println!(
-            "{} {}",
+            "- {} \t:: {}",
             call.serviceJourney.journeyPattern.line.publicCode, call.destinationDisplay.frontText
         );
 
         if arrives_in_minutes > 10 {
-            println!("{}\n", expected_arrival.format("%H:%M"));
+            println!("  {}\n", expected_arrival.format("%H:%M"));
         } else {
-            println!("{:?} min\n", arrives_in_minutes);
+            println!(
+                "  {:?} min  [{}]\n",
+                arrives_in_minutes,
+                expected_arrival.format("%H:%M")
+            );
         }
+    }
+}
+
+fn get_user_input(input: &mut String) {
+    let _ = stdout().flush();
+    stdin()
+        .read_line(input)
+        .expect("Did not enter a correct string");
+    if let Some('\n') = input.chars().next_back() {
+        input.pop();
+    }
+    if let Some('\r') = input.chars().next_back() {
+        input.pop();
     }
 }
 
@@ -75,19 +92,9 @@ async fn main() {
         print_choices(&geo.features);
 
         println!("\nPick a number:");
-
-        let _ = stdout().flush();
-        stdin()
-            .read_line(&mut input)
-            .expect("Did not enter a correct string");
-        if let Some('\n') = input.chars().next_back() {
-            input.pop();
-        }
-        if let Some('\r') = input.chars().next_back() {
-            input.pop();
-        }
+        get_user_input(&mut input);
     } else {
-        input = "0".to_string();
+        input = "1".to_string();
     }
 
     println!("\n----------------------------------\n[Departures]\n");
