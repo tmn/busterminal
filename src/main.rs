@@ -3,10 +3,11 @@
 #[macro_use]
 extern crate guard;
 
+use std::io::Write;
+
 use btapi::model::EstimatedCall;
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use std::io::{stdin, stdout, Write};
 
 mod btapi;
 
@@ -60,29 +61,20 @@ fn print_departures(departures: &[EstimatedCall]) {
     }
 }
 
-fn get_user_input(input: &mut String) {
-    let _ = stdout().flush();
-    stdin()
-        .read_line(input)
-        .expect("Did not enter a correct string");
-    if let Some('\n') = input.chars().next_back() {
-        input.pop();
-    }
-    if let Some('\r') = input.chars().next_back() {
-        input.pop();
-    }
-}
-
 #[tokio::main]
 async fn main() {
     let args: Args = Args::parse();
     println!("Searching for {}", args.name);
 
-    guard!(let Ok(geo_response) = btapi::request::geocoder::get_autocomplete_stop_name(&args.name).await else {
+    let client = btapi::request::EnTurClient::new();
+
+    guard!(let Ok(geo_response) = client.get_autocomplete_stop_name(&args.name).await else {
+        println!("Could not find any stops using query: {}", args.name);
         return;
     });
 
     guard!(let Ok(geo) = serde_json::from_str::<btapi::model::Geocode>(&geo_response) else {
+        // Could not parse response - panic/noop
         return;
     });
 
@@ -92,27 +84,37 @@ async fn main() {
         print_choices(&geo.features);
 
         println!("\nPick a number:");
-        get_user_input(&mut input);
+        btapi::helpers::get_user_input(&mut input);
     } else {
         input = "1".to_string();
     }
 
-    println!("\n----------------------------------\n[Departures]\n");
+    let input = loop {
+        match input.parse::<usize>() {
+            Ok(input) => break input,
+            Err(_error) => {
+                print_choices(&geo.features);
+                println!("\nInvalid number - pick another one");
+                println!("Valid numbers are: 1 - {}\n", geo.features.len());
 
-    guard!(let Ok(input) = input.parse::<usize>() else {
-        println!("Valid inputs are: 1 - {}", geo.features.len());
-        return;
-    });
+                let _ = std::io::stdout().flush();
+                input = "".to_string();
+                btapi::helpers::get_user_input(&mut input);
+            }
+        }
+    };
+
+    println!("\n----------------------------------\n[Departures]\n");
 
     let feature: &btapi::model::Feature = &geo.features[input - 1];
 
-    guard!(let Ok(stopplace_response) = btapi::request::journeyplanner::stop_place(
+    guard!(let Ok(stopplace_response) = client.get_stop_place(
         &feature.properties.id,
         &Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
-    )
-           .await else {
-               return;
-           });
+    ).await else {
+        println!("Could not get any departures. Please try again later.");
+        return;
+    });
 
     if let Ok(stopplace) = serde_json::from_str::<
         btapi::wrapper::Wrapper<btapi::model::StopPlaceResponse>,
