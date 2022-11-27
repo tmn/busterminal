@@ -1,5 +1,8 @@
 #![allow(non_snake_case)]
 
+#[macro_use]
+extern crate guard;
+
 use btapi::model::EstimatedCall;
 use chrono::{DateTime, Utc};
 use clap::Parser;
@@ -18,16 +21,27 @@ fn print_choices(features: &[btapi::model::Feature]) {
     for (i, feature) in features.iter().enumerate() {
         println!(
             "{} - {} [{} - {}]",
-            i, feature.properties.name, feature.properties.locality, feature.properties.county
+            i + 1,
+            feature.properties.name,
+            feature.properties.locality,
+            feature.properties.county
         );
     }
 }
 
 fn print_departures(departures: &[EstimatedCall]) {
     for (_, call) in departures.iter().enumerate() {
-        let now = chrono::offset::Local::now();
-        let expected_arrival = DateTime::parse_from_rfc3339(&call.expectedArrivalTime).unwrap();
+        guard!(let Ok(expected_arrival) = DateTime::parse_from_rfc3339(&call.expectedArrivalTime) else {
+            return;
+        });
+
+        let now: DateTime<chrono::Local> = chrono::offset::Local::now();
         let arrives_in_minutes = expected_arrival.signed_duration_since(now).num_minutes();
+
+        match DateTime::parse_from_rfc3339(&call.expectedArrivalTime) {
+            Ok(_time) => {}
+            Err(_error) => {}
+        }
 
         println!(
             "{} {}",
@@ -43,19 +57,19 @@ fn print_departures(departures: &[EstimatedCall]) {
 }
 
 #[tokio::main]
-async fn main() -> serde_json::Result<()> {
-    let args = Args::parse();
+async fn main() {
+    let args: Args = Args::parse();
     println!("Searching for {}", args.name);
 
-    let geo_response = btapi::request::geocoder::get_autocomplete_stop_name(&args.name)
-        .await
-        .unwrap()
-        .text()
-        .await
-        .unwrap();
+    guard!(let Ok(geo_response) = btapi::request::geocoder::get_autocomplete_stop_name(&args.name).await else {
+        return;
+    });
 
-    let geo: btapi::model::Geocode = serde_json::from_str(&geo_response).unwrap();
-    let mut input = String::new();
+    guard!(let Ok(geo) = serde_json::from_str::<btapi::model::Geocode>(&geo_response) else {
+        return;
+    });
+
+    let mut input: String = String::new();
 
     if geo.features.len() > 1 {
         print_choices(&geo.features);
@@ -78,20 +92,25 @@ async fn main() -> serde_json::Result<()> {
 
     println!("\n----------------------------------\n[Departures]\n");
 
-    let feature: &btapi::model::Feature = &geo.features[input.parse::<usize>().unwrap()];
-    let res = btapi::request::journeyplanner::stop_place(
+    guard!(let Ok(input) = input.parse::<usize>() else {
+        println!("Valid inputs are: 1 - {}", geo.features.len());
+        return;
+    });
+
+    let feature: &btapi::model::Feature = &geo.features[input - 1];
+
+    guard!(let Ok(stopplace_response) = btapi::request::journeyplanner::stop_place(
         &feature.properties.id,
         &Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
     )
-    .await
-    .unwrap()
-    .text()
-    .await
-    .unwrap();
+           .await else {
+               return;
+           });
 
-    let stopplace_response: btapi::wrapper::Wrapper<btapi::model::StopPlaceResponse> =
-        serde_json::from_str(&res)?;
-    print_departures(&stopplace_response.data.stopPlace.estimatedCalls);
-
-    Ok(())
+    if let Ok(stopplace) = serde_json::from_str::<
+        btapi::wrapper::Wrapper<btapi::model::StopPlaceResponse>,
+    >(&stopplace_response)
+    {
+        print_departures(&stopplace.data.stopPlace.estimatedCalls);
+    }
 }

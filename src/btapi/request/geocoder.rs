@@ -1,7 +1,7 @@
 use haversinerust;
 use reqwest;
 
-pub async fn get_autocomplete_stop_name(query: &str) -> Result<reqwest::Response, reqwest::Error> {
+pub async fn get_autocomplete_stop_name(query: &str) -> Result<String, reqwest::Error> {
     let client = reqwest::Client::new();
 
     let res = client
@@ -11,9 +11,14 @@ pub async fn get_autocomplete_stop_name(query: &str) -> Result<reqwest::Response
         ))
         .header("ET-Client-Name", "tmnio-sanntidsappen-dev")
         .send()
-        .await?;
+        .await;
 
-    Ok(res)
+    let data = match res {
+        Ok(response) => response,
+        Err(error) => panic!("Request error: {}", error),
+    };
+
+    data.text().await
 }
 
 #[allow(dead_code)]

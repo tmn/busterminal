@@ -1,9 +1,6 @@
 use reqwest;
 
-pub async fn stop_place(
-    stop_id: &str,
-    start_time: &str,
-) -> Result<reqwest::Response, reqwest::Error> {
+pub async fn stop_place(stop_id: &str, start_time: &str) -> Result<String, reqwest::Error> {
     let client = reqwest::Client::new();
 
     let query: String = format!(
@@ -53,9 +50,14 @@ pub async fn stop_place(
         .header("ET-Client-Name", "tmnio-sanntidsappen-dev")
         .body(query)
         .send()
-        .await?;
+        .await;
 
-    Ok(res)
+    let data = match res {
+        Ok(response) => response,
+        Err(error) => panic!("Request error: {}", error),
+    };
+
+    data.text().await
 }
 
 #[allow(dead_code)]
