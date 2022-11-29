@@ -83,9 +83,13 @@ async fn main() {
 
         println!();
         println!();
-        print!("\x1b[32m?\x1b[0m Which stop (1 - {}): ", geo.features.len());
+        print!(
+            "\x1b[32m?\x1b[0m Which stop (1 - {}): \x1b[1;36m",
+            geo.features.len()
+        );
 
         btapi::helpers::get_user_input(&mut input);
+        print!("\x1b[0m");
     } else {
         input = "1".to_string();
     }
@@ -101,12 +105,13 @@ async fn main() {
         }
 
         print!(
-            "\x1b[31mX\x1b[0m Invalid stop - pick another one (1 - {}): ",
+            "\x1b[31mX\x1b[0m Invalid stop - pick another one (1 - {}): \x1b[1;36m",
             geo.features.len()
         );
         let _ = std::io::stdout().flush();
         input = "".to_string();
         btapi::helpers::get_user_input(&mut input);
+        print!("\x1b[0m");
     };
 
     println!();
