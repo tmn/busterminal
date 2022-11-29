@@ -15,13 +15,13 @@ mod btapi;
 #[command(author, version, about, long_about = None)]
 struct Args {
     #[arg(short, long)]
-    name: String,
+    stop: String,
 }
 
 fn print_choices(features: &[btapi::model::Feature]) {
     for (i, feature) in features.iter().enumerate() {
         println!(
-            "{} - {} [{} - {}]",
+            "\x1b[32m{}\x1b[0m - \x1b[1m{}\x1b[0m ({} - {})",
             i + 1,
             feature.properties.name,
             feature.properties.locality,
@@ -37,39 +37,37 @@ fn print_departures(departures: &[EstimatedCall]) {
         });
 
         let now: DateTime<chrono::Local> = chrono::offset::Local::now();
-        let arrives_in_minutes = expected_arrival.signed_duration_since(now).num_minutes();
-
-        match DateTime::parse_from_rfc3339(&call.expectedArrivalTime) {
-            Ok(_time) => {}
-            Err(_error) => {}
-        }
+        let arrives_in_minutes: i64 = expected_arrival.signed_duration_since(now).num_minutes();
+        let expected_arrival_formated = expected_arrival.format("%H:%M");
 
         println!(
-            "- {} \t:: {}",
+            " \x1b[97;42;1m {} \x1b[0m {}",
             call.serviceJourney.journeyPattern.line.publicCode, call.destinationDisplay.frontText
         );
 
         if arrives_in_minutes > 10 {
-            println!("  {}\n", expected_arrival.format("%H:%M"));
+            println!(" \x1b[1m{}\x1b[0m", expected_arrival_formated);
         } else {
             println!(
-                "  {:?} min  [{}]\n",
-                arrives_in_minutes,
-                expected_arrival.format("%H:%M")
+                " \x1b[1m{:?} min\x1b[0m ({})",
+                arrives_in_minutes, expected_arrival_formated
             );
         }
+
+        println!();
     }
 }
 
 #[tokio::main]
 async fn main() {
     let args: Args = Args::parse();
-    println!("Searching for {}", args.name);
+    let client: btapi::request::EnTurClient = btapi::request::EnTurClient::new();
 
-    let client = btapi::request::EnTurClient::new();
+    println!("Searching for \x1b[32m{}\x1b[0m", args.stop);
+    println!();
 
-    guard!(let Ok(geo_response) = client.get_autocomplete_stop_name(&args.name).await else {
-        println!("Could not find any stops using query: {}", args.name);
+    guard!(let Ok(geo_response) = client.get_autocomplete_stop_name(&args.stop).await else {
+        println!("Could not find any stops using query: {}", args.stop);
         return;
     });
 
@@ -83,7 +81,7 @@ async fn main() {
     if geo.features.len() > 1 {
         print_choices(&geo.features);
 
-        println!("\nPick a number:");
+        print!("\nPick a number: ");
         btapi::helpers::get_user_input(&mut input);
     } else {
         input = "1".to_string();
@@ -104,14 +102,16 @@ async fn main() {
         }
     };
 
-    println!("\n----------------------------------\n[Departures]\n");
+    println!();
+    println!("----------------------------------");
+    println!();
+    println!("\x1b[1mDepartures\x1b[0m");
+    println!();
 
     let feature: &btapi::model::Feature = &geo.features[input - 1];
+    let now: String = Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
-    guard!(let Ok(stopplace_response) = client.get_stop_place(
-        &feature.properties.id,
-        &Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
-    ).await else {
+    guard!(let Ok(stopplace_response) = client.get_stop_place(&feature.properties.id, &now).await else {
         println!("Could not get any departures. Please try again later.");
         return;
     });
