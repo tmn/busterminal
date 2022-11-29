@@ -63,7 +63,7 @@ async fn main() {
     let args: Args = Args::parse();
     let client: btapi::request::EnTurClient = btapi::request::EnTurClient::new();
 
-    println!("Searching for \x1b[32m{}\x1b[0m", args.stop);
+    println!("Searching for \x1b[32;1m{}\x1b[0m", args.stop);
     println!();
 
     guard!(let Ok(geo_response) = client.get_autocomplete_stop_name(&args.stop).await else {
@@ -81,7 +81,10 @@ async fn main() {
     if geo.features.len() > 1 {
         print_choices(&geo.features);
 
-        print!("\nPick a number: ");
+        println!();
+        println!();
+        print!("\x1b[32m?\x1b[0m Which stop (1 - {}): ", geo.features.len());
+
         btapi::helpers::get_user_input(&mut input);
     } else {
         input = "1".to_string();
@@ -89,23 +92,32 @@ async fn main() {
 
     let input = loop {
         match input.parse::<usize>() {
-            Ok(input) => break input,
-            Err(_error) => {
-                print_choices(&geo.features);
-                println!("\nInvalid number - pick another one");
-                println!("Valid numbers are: 1 - {}\n", geo.features.len());
-
-                let _ = std::io::stdout().flush();
-                input = "".to_string();
-                btapi::helpers::get_user_input(&mut input);
+            Ok(value) => {
+                if value > 0 && value <= geo.features.len() {
+                    break value;
+                }
             }
+            Err(_error) => { /* noop */ }
         }
+
+        print!(
+            "\x1b[31mX\x1b[0m Invalid stop - pick another one (1 - {}): ",
+            geo.features.len()
+        );
+        let _ = std::io::stdout().flush();
+        input = "".to_string();
+        btapi::helpers::get_user_input(&mut input);
     };
 
     println!();
     println!("----------------------------------");
     println!();
-    println!("\x1b[1mDepartures\x1b[0m");
+    println!(
+        "\x1b[1mDepartures for \x1b[4m{} ({} - {})\x1b[0m",
+        geo.features[input - 1].properties.name,
+        geo.features[input - 1].properties.locality,
+        geo.features[input - 1].properties.county,
+    );
     println!();
 
     let feature: &btapi::model::Feature = &geo.features[input - 1];
