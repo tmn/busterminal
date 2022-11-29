@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-haversinerust = { git = "https://github.com/tmn/haversine-rust"}
+haversinerust = { version = "0.1.1", git = "https://github.com/tmn/haversine-rust"}
 reqwest = "0.11.13"
 tokio = { version = "1.22.0", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
