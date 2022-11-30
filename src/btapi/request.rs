@@ -45,8 +45,8 @@ impl EnTurClient {
             numberOfDepartures: 50
         ) {{
             realtime
-            aimedArrivalTime
-            expectedArrivalTime
+            aimedDepartureTime
+            expectedDepartureTime
             date
             forBoarding
             destinationDisplay {{
@@ -173,6 +173,88 @@ serviceJourney(id: "{}") {{
         let res = self.http_client.get(&url).send().await;
 
         let data = match res {
+            Ok(response) => response,
+            Err(error) => panic!("Request error: {}", error),
+        };
+
+        data.text().await
+    }
+
+    #[allow(dead_code)]
+    pub async fn plan_trip(&self, from: &String, to: &String) -> Result<String, reqwest::Error> {
+        let url: String = format!("{}/journey-planner/v3/graphql", self.base_url);
+
+        let query: String = format!(
+            r#"
+{{
+  trip(
+    from: {{
+      place: "{from}"
+    }},
+    to: {{
+      place: "{to}"
+    }}
+  ) {{
+    tripPatterns {{
+      duration
+      walkDistance
+      legs {{
+        expectedStartTime
+        expectedEndTime
+        duration
+        mode
+        distance
+        line {{
+          id
+          publicCode
+          name
+          transportMode
+        }}
+        fromEstimatedCall {{
+          quay {{
+            id
+            name
+            publicCode
+          }}
+          date
+          forBoarding
+          realtime
+          aimedDepartureTime
+          expectedDepartureTime
+          actualDepartureTime
+          destinationDisplay {{
+            frontText
+          }}
+        }}
+        toEstimatedCall {{
+          quay {{
+            id
+            name
+            publicCode
+          }}
+          date
+          forBoarding
+          realtime
+          aimedDepartureTime
+          expectedDepartureTime
+          actualDepartureTime
+          destinationDisplay {{
+            frontText
+          }}
+        }}
+      }}
+    }}
+  }}
+}}
+"#,
+            from = from,
+            to = to
+        );
+
+        let res: Result<reqwest::Response, reqwest::Error> =
+            self.http_client.post(&url).body(query).send().await;
+
+        let data: reqwest::Response = match res {
             Ok(response) => response,
             Err(error) => panic!("Request error: {}", error),
         };

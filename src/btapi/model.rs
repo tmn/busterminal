@@ -8,13 +8,13 @@ pub struct DestinationDisplay {
 #[derive(Deserialize, Debug)]
 pub struct EstimatedCall {
     pub realtime: bool,
-    pub aimedArrivalTime: String,
-    pub expectedArrivalTime: String,
+    pub aimedDepartureTime: String,
+    pub expectedDepartureTime: String,
     pub date: String,
     pub forBoarding: bool,
     pub destinationDisplay: DestinationDisplay,
     pub quay: Quay,
-    pub serviceJourney: ServiceJourney,
+    pub serviceJourney: Option<ServiceJourney>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -84,4 +84,78 @@ pub struct Stop {
     pub name: String,
     pub locality: String,
     pub county: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TripResponse {
+    pub trip: Trip,
+}
+#[derive(Deserialize, Debug)]
+pub struct Trip {
+    pub tripPatterns: Vec<TripPattern>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct TripPattern {
+    pub duration: i64,
+    pub walkDistance: f64,
+    pub legs: Vec<Leg>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Leg {
+    pub expectedStartTime: String,
+    pub expectedEndTime: String,
+    pub duration: i64,
+    pub mode: Mode,
+    pub distance: f64,
+    pub line: Option<Line>,
+    pub fromEstimatedCall: Option<EstimatedCall>,
+    pub toEstimatedCall: Option<EstimatedCall>,
+}
+
+#[derive(Deserialize, Debug)]
+#[allow(non_camel_case_types)]
+pub enum Mode {
+    air,
+    bicycle,
+    bus,
+    cableway,
+    water,
+    funicular,
+    lift,
+    rail,
+    metro,
+    tram,
+    trolleybus,
+    monorail,
+    coach,
+    foot,
+    car,
+    scooter,
+}
+
+use std::fmt;
+
+impl fmt::Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Mode::air => write!(f, "Air"),
+            Mode::bicycle => write!(f, "Bicycle"),
+            Mode::bus => write!(f, "Bus"),
+            Mode::cableway => write!(f, "Cableway"),
+            Mode::water => write!(f, "Water"),
+            Mode::funicular => write!(f, "Funicular"),
+            Mode::lift => write!(f, "Lift"),
+            Mode::rail => write!(f, "Rail"),
+            Mode::metro => write!(f, "Metro"),
+            Mode::tram => write!(f, "Tram"),
+            Mode::trolleybus => write!(f, "Trolleybus"),
+            Mode::monorail => write!(f, "Monorail"),
+            Mode::coach => write!(f, "Coach"),
+            Mode::foot => write!(f, "Foot"),
+            Mode::car => write!(f, "Car"),
+            Mode::scooter => write!(f, "Scooter"),
+        }
+    }
 }
