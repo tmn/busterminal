@@ -1,7 +1,18 @@
 [package]
 name = "busterminal"
 version = "0.1.0"
+authors = ["Tri Nguyen <pub@tmn.io>"]
 edition = "2021"
+description = """
+A simple CLI for retrieving information from public transportation system in Norway
+"""
+repository = "https://github.com/tmn/busterminal"
+readme = "README.md"
+license = "Apache-2.0 "
+keywords = ["publictransportation", "transportation", "entur", "norway"]
+
+[[bin]]
+name = "busterminal"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
