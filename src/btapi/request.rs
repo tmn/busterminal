@@ -179,8 +179,4 @@ serviceJourney(id: "{}") {{
 
         data.text().await
     }
-
-    #[allow(dead_code)]
-    #[allow(unused_variables)]
-    pub async fn get_nearby_stops(location: &haversinerust::Location) {}
 }
