@@ -187,6 +187,7 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
     let mut to_input: String = String::new();
 
     if from.features.len() > 1 {
+        println!("\x1b[1mTravel from\x1b[0m");
         print_choices(&from.features);
 
         println!();
@@ -223,6 +224,7 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
     };
 
     if to.features.len() > 1 {
+        println!("\x1b[1mTravel to\x1b[0m");
         print_choices(&to.features);
 
         println!();
@@ -262,6 +264,8 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
         println!("Error retrieving trip response");
         return;
     });
+
+    println!();
 
     if let Ok(trip) =
         serde_json::from_str::<btapi::wrapper::Wrapper<btapi::model::TripResponse>>(&trip_response)
