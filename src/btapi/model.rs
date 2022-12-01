@@ -114,7 +114,7 @@ pub struct Leg {
     pub toEstimatedCall: Option<EstimatedCall>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
 pub enum Mode {
     air,

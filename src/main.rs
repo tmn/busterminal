@@ -163,7 +163,102 @@ async fn departure(client: &EnTurClient, args: &DepartureArgs) {
 }
 
 async fn trip(client: &EnTurClient, args: &TripArgs) {
-    guard!(let Ok(trip_response) = client.plan_trip(&args.from, &args.to).await else {
+    guard!(let Ok(from_response) = client.get_autocomplete_stop_name(&args.from).await else {
+        println!("Could not find any stops using query: {}", args.from);
+        return;
+    });
+
+    guard!(let Ok(from) = serde_json::from_str::<btapi::model::Geocode>(&from_response) else {
+        // Could not parse response - panic/noop
+        return;
+    });
+
+    guard!(let Ok(to_response) = client.get_autocomplete_stop_name(&args.to).await else {
+        println!("Could not find any stops using query: {}", args.to);
+        return;
+    });
+
+    guard!(let Ok(to) = serde_json::from_str::<btapi::model::Geocode>(&to_response) else {
+        // Could not parse response - panic/noop
+        return;
+    });
+
+    let mut from_input: String = String::new();
+    let mut to_input: String = String::new();
+
+    if from.features.len() > 1 {
+        print_choices(&from.features);
+
+        println!();
+        println!();
+        print!(
+            "\x1b[32m?\x1b[0m Which stop (1 - {}): \x1b[1;36m",
+            from.features.len()
+        );
+
+        btapi::helpers::get_user_input(&mut from_input);
+        print!("\x1b[0m");
+    } else {
+        from_input = "1".to_string();
+    }
+
+    let from_input = loop {
+        match from_input.parse::<usize>() {
+            Ok(value) => {
+                if value > 0 && value <= from.features.len() {
+                    break value;
+                }
+            }
+            Err(_error) => { /* noop */ }
+        }
+
+        print!(
+            "\x1b[31mX\x1b[0m Invalid stop - pick another one (1 - {}): \x1b[1;36m",
+            from.features.len()
+        );
+        let _ = std::io::stdout().flush();
+        from_input = "".to_string();
+        btapi::helpers::get_user_input(&mut from_input);
+        print!("\x1b[0m");
+    };
+
+    if to.features.len() > 1 {
+        print_choices(&to.features);
+
+        println!();
+        println!();
+        print!(
+            "\x1b[32m?\x1b[0m Which stop (1 - {}): \x1b[1;36m",
+            to.features.len()
+        );
+
+        btapi::helpers::get_user_input(&mut to_input);
+        print!("\x1b[0m");
+    } else {
+        to_input = "1".to_string();
+    }
+
+    let to_input = loop {
+        match to_input.parse::<usize>() {
+            Ok(value) => {
+                if value > 0 && value <= to.features.len() {
+                    break value;
+                }
+            }
+            Err(_error) => { /* noop */ }
+        }
+
+        print!(
+            "\x1b[31mX\x1b[0m Invalid stop - pick another one (1 - {}): \x1b[1;36m",
+            to.features.len()
+        );
+        let _ = std::io::stdout().flush();
+        to_input = "".to_string();
+        btapi::helpers::get_user_input(&mut to_input);
+        print!("\x1b[0m");
+    };
+
+    guard!(let Ok(trip_response) = client.plan_trip(&from.features[from_input -1].properties.id, &to.features[to_input -1].properties.id).await else {
         println!("Error retrieving trip response");
         return;
     });
@@ -178,7 +273,7 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
             let hours = duration.num_hours();
             let minutes = duration.num_minutes() - (hours * 60);
 
-            print!("Duration:");
+            print!("Travel time:");
             if hours > 0 {
                 print!(" {} t", hours);
             }
@@ -186,13 +281,13 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
             println!();
 
             for leg in &pattern.legs {
-                println!("Mode: {}", leg.mode);
+                // println!("Mode: {}", leg.mode);
 
                 if let Some(from_estimated_call) = &leg.fromEstimatedCall {
                     if let Ok(expected_departure) =
                         DateTime::parse_from_rfc3339(&from_estimated_call.aimedDepartureTime)
                     {
-                        print!("\x1b[1m{}\x1b[0m ", expected_departure.format("%H:%M"));
+                        print!("\x1b[1m{}\x1b[0m • ", expected_departure.format("%H:%M"));
                     }
 
                     print!("{}", from_estimated_call.quay.name);
@@ -204,18 +299,36 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
                     println!();
                 }
 
-                println!("|");
-                println!(
-                    "{} min",
-                    chrono::Duration::seconds(leg.duration).num_minutes()
-                );
-                println!("|");
+                if leg.mode == btapi::model::Mode::foot {
+                    println!("      . ");
+                    println!(
+                        "      . Walk {} minutes",
+                        chrono::Duration::seconds(leg.duration).num_minutes()
+                    );
+                    println!("      . ");
+                } else {
+                    println!("      |");
+                    if let Some(line) = &leg.line {
+                        print!("      | \x1b[97;42m {} \x1b[0m ", line.publicCode);
+                    }
+
+                    if let Some(to_estimated_call) = &leg.toEstimatedCall {
+                        println!("{}", to_estimated_call.destinationDisplay.frontText);
+                    }
+
+                    println!(
+                        "      | {} min",
+                        chrono::Duration::seconds(leg.duration).num_minutes()
+                    );
+                    println!("      |");
+                    println!("      |");
+                }
 
                 if let Some(to_estimated_call) = &leg.toEstimatedCall {
                     if let Ok(expected_departure) =
                         DateTime::parse_from_rfc3339(&to_estimated_call.aimedDepartureTime)
                     {
-                        print!("\x1b[1m{}\x1b[0m ", expected_departure.format("%H:%M"));
+                        print!("\x1b[1m{}\x1b[0m • ", expected_departure.format("%H:%M"));
                     }
 
                     print!("{} ", to_estimated_call.quay.name);

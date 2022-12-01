@@ -4,6 +4,7 @@ busterminal is a **BLAZINGLY FAST**, **RUST-BASED** CLI for.. jk. It's just a si
 
 ![busterminal example usage](https://s3.fr-par.scw.cloud/io.tmn.publicfiles/images/busterminal-5.png)
 
+
 ## Installation
 
 Install **busterminal** using cargo:
@@ -22,5 +23,7 @@ Plan a trip:
 ```bash
 $ busterminal trip --from "Oslo S" --to "Oslo Gardemoen Lufthavn"
 ```
+
+![busterminal example usage](https://s3.fr-par.scw.cloud/io.tmn.publicfiles/images/busterminal-trip-1.png)
 
 <sub>This project is not affiliated with EnTur in any way.</sub>
