@@ -1,6 +1,6 @@
 [package]
 name = "busterminal"
-version = "1.0.0"
+version = "1.1.0"
 authors = ["Tri Nguyen <pub@tmn.io>"]
 edition = "2021"
 description = """
