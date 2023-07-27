@@ -1,8 +1,5 @@
 #![allow(non_snake_case)]
 
-#[macro_use]
-extern crate guard;
-
 use std::io::Write;
 
 use btapi::{model::EstimatedCall, request::EnTurClient};
@@ -51,11 +48,11 @@ fn print_choices(features: &[btapi::model::Feature]) {
     }
 }
 
-fn print_departures(departures: &[EstimatedCall]) {
+fn print_departures(departures: &[EstimatedCall]) -> () {
     for (_, call) in departures.iter().enumerate() {
-        guard!(let Ok(expected_departure) = DateTime::parse_from_rfc3339(&call.expectedDepartureTime) else {
+        let Ok(expected_departure) = DateTime::parse_from_rfc3339(&call.expectedDepartureTime) else {
             return;
-        });
+        };
 
         let now: DateTime<chrono::Local> = chrono::offset::Local::now();
         let arrives_in_minutes: i64 = expected_departure.signed_duration_since(now).num_minutes();
@@ -87,15 +84,15 @@ async fn departure(client: &EnTurClient, args: &DepartureArgs) {
     println!("Searching for \x1b[32;1m{}\x1b[0m", args.stop);
     println!();
 
-    guard!(let Ok(geo_response) = client.get_autocomplete_stop_name(&args.stop).await else {
+    let Ok(geo_response) = client.get_autocomplete_stop_name(&args.stop).await else {
         println!("Could not find any stops using query: {}", args.stop);
         return;
-    });
+    };
 
-    guard!(let Ok(geo) = serde_json::from_str::<btapi::model::Geocode>(&geo_response) else {
+    let Ok(geo) = serde_json::from_str::<btapi::model::Geocode>(&geo_response) else {
         // Could not parse response - panic/noop
         return;
-    });
+    };
 
     let mut input: String = String::new();
 
@@ -149,10 +146,14 @@ async fn departure(client: &EnTurClient, args: &DepartureArgs) {
     let feature: &btapi::model::Feature = &geo.features[input - 1];
     let now: String = Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
-    guard!(let Ok(stopplace_response) = client.get_stop_place(&feature.properties.id, &now).await else {
+    let Ok(stopplace_response) = client.get_stop_place(&feature.properties.id, &now).await else {
         println!("Could not get any departures. Please try again later.");
         return;
-    });
+    };
+
+    // let test = serde_json::to_string(departures).unwrap();
+
+    println!("{}", stopplace_response);
 
     if let Ok(stopplace) = serde_json::from_str::<
         btapi::wrapper::Wrapper<btapi::model::StopPlaceResponse>,
@@ -163,25 +164,30 @@ async fn departure(client: &EnTurClient, args: &DepartureArgs) {
 }
 
 async fn trip(client: &EnTurClient, args: &TripArgs) {
-    guard!(let Ok(from_response) = client.get_autocomplete_stop_name(&args.from).await else {
+    let Ok(from_response) = client.get_autocomplete_stop_name(&args.from).await else {
         println!("Could not find any stops using query: {}", args.from);
         return;
-    });
+    };
 
-    guard!(let Ok(from) = serde_json::from_str::<btapi::model::Geocode>(&from_response) else {
+    let Ok(from) = serde_json::from_str::<btapi::model::Geocode>(&from_response) else {
         // Could not parse response - panic/noop
         return;
-    });
+    };
 
-    guard!(let Ok(to_response) = client.get_autocomplete_stop_name(&args.to).await else {
+    let Ok(to_response) = client.get_autocomplete_stop_name(&args.to).await else {
         println!("Could not find any stops using query: {}", args.to);
         return;
-    });
+    };
 
-    guard!(let Ok(to) = serde_json::from_str::<btapi::model::Geocode>(&to_response) else {
+    let Ok(to) = serde_json::from_str::<btapi::model::Geocode>(&to_response) else {
         // Could not parse response - panic/noop
         return;
-    });
+    };
+
+    let false = to.features.is_empty() else {
+        println!("\x1b[31mX\x1b[0m Invalid stop: {} \x1b[1;36m", &args.to);
+        return;
+    };
 
     let mut from_input: String = String::new();
     let mut to_input: String = String::new();
@@ -260,10 +266,10 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
         print!("\x1b[0m");
     };
 
-    guard!(let Ok(trip_response) = client.plan_trip(&from.features[from_input -1].properties.id, &to.features[to_input -1].properties.id).await else {
+    let Ok(trip_response) = client.plan_trip(&from.features[from_input -1].properties.id, &to.features[to_input -1].properties.id).await else {
         println!("Error retrieving trip response");
         return;
-    });
+    };
 
     println!();
 

@@ -132,7 +132,6 @@ version = "1.0.0"
 dependencies = [
  "chrono",
  "clap",
- "guard",
  "http",
  "reqwest",
  "serde",
@@ -346,12 +345,6 @@ name = "gimli"
 version = "0.27.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c80984affa11d98d1b88b66ac8853f143217b399d3c74116778ff8fdb4ed2e"
-
-[[package]]
-name = "guard"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d7402bc4451b9f3cc9a2467bb2faf3ad01b129ae9f47f9943a24ad7a2064d84"
 
 [[package]]
 name = "h2"

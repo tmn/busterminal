@@ -10,8 +10,13 @@ impl EnTurClient {
     pub fn new() -> Self {
         let mut headers = HeaderMap::new();
         headers.insert(
+            http::header::CONTENT_TYPE,
+            HeaderValue::from_str("application/json").unwrap(),
+        );
+
+        headers.insert(
             "ET-Client-Name",
-            HeaderValue::from_static("tmnio-sanntidsappen-dev"),
+            HeaderValue::from_str("tmnio-sanntidsappen-dev").unwrap(),
         );
 
         let http_client = reqwest::Client::builder()
@@ -36,44 +41,51 @@ impl EnTurClient {
         let query: String = format!(
             r#"
 {{
-    stopPlace(id: "{}") {{
-        id
-        name
-        estimatedCalls(
-            startTime: "{}",
-            timeRange: 72100,
-            numberOfDepartures: 50
-        ) {{
-            realtime
-            aimedDepartureTime
-            expectedDepartureTime
-            date
-            forBoarding
-            destinationDisplay {{
-                frontText
-            }}
-            quay {{
-                id
-                name
-                publicCode
-                description
-            }}
-            serviceJourney {{
-                id
-                journeyPattern {{
-                    line {{
-                        id
-                        publicCode
-                        name transportMode
-                    }}
-                }}
-            }}
+  "query": "
+  {{
+    stopPlace(id: \"{}\")
+    {{
+      id
+      name
+      estimatedCalls(
+        startTime: \"{}\",
+        timeRange: 72100,
+        numberOfDepartures: 50
+      ) {{
+        realtime
+        aimedDepartureTime
+        expectedDepartureTime
+        date
+        forBoarding
+        destinationDisplay {{
+          frontText
         }}
+        quay {{
+          id
+          name
+          publicCode
+          description
+        }}
+        serviceJourney {{
+          id
+          journeyPattern {{
+            line {{
+              id
+              publicCode
+              name
+              transportMode
+            }}
+          }}
+        }}
+      }}
     }}
-}}
-"#,
+  }}"
+}}"#,
             stop_id, start_time
-        );
+        )
+        .replace('\n', "");
+
+        println!("{}", query);
 
         let res: Result<reqwest::Response, reqwest::Error> =
             self.http_client.post(&url).body(query).send().await;
@@ -96,8 +108,10 @@ impl EnTurClient {
         let query: String = format!(
             r#"
 {{
-serviceJourney(id: "{}") {{
-        estimatedCalls(date: "{}") {{
+"query": "
+{{
+serviceJourney(id: \"{}\") {{
+        estimatedCalls(date: \"{}\") {{
             aimedDepartureTime
             expectedDepartureTime
             quay {{
@@ -106,11 +120,12 @@ serviceJourney(id: "{}") {{
             }}
         }}
     }}
+}}"
 }}
-
 "#,
             journey_id, date_time
-        );
+        )
+        .replace('\n', "");
 
         let res = self.http_client.post(&url).body(query).send().await;
 
@@ -131,7 +146,8 @@ serviceJourney(id: "{}") {{
         let query: String = format!(
             r#"
 {{
-    stopPlace(id: "{}", stopPlaceType: onstreetBus) {{
+"query": "{{
+    stopPlace(id: \"{}\", stopPlaceType: onstreetBus) {{
         id
         name {{
             value
@@ -147,10 +163,12 @@ serviceJourney(id: "{}") {{
             }}
         }}
     }}
+}}"
 }}
 "#,
             stop_id
-        );
+        )
+        .replace('\n', "");
 
         let res: Result<reqwest::Response, reqwest::Error> =
             self.http_client.post(&url).body(query).send().await;
@@ -187,12 +205,14 @@ serviceJourney(id: "{}") {{
         let query: String = format!(
             r#"
 {{
+"query": "
+{{
   trip(
     from: {{
-      place: "{from}"
+      place: \"{from}\"
     }},
     to: {{
-      place: "{to}"
+      place: \"{to}\"
     }}
   ) {{
     tripPatterns {{
@@ -245,11 +265,13 @@ serviceJourney(id: "{}") {{
       }}
     }}
   }}
+}}"
 }}
 "#,
             from = from,
             to = to
-        );
+        )
+        .replace('\n', "");
 
         let res: Result<reqwest::Response, reqwest::Error> =
             self.http_client.post(&url).body(query).send().await;
