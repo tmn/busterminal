@@ -184,6 +184,11 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
         return;
     };
 
+    let false = from.features.is_empty() else {
+        println!("\x1b[31mX\x1b[0m Invalid stop: {} \x1b[1;36m", &args.to);
+        return;
+    };
+
     let false = to.features.is_empty() else {
         println!("\x1b[31mX\x1b[0m Invalid stop: {} \x1b[1;36m", &args.to);
         return;
