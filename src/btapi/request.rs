@@ -85,8 +85,6 @@ impl EnTurClient {
         )
         .replace('\n', "");
 
-        println!("{}", query);
-
         let res: Result<reqwest::Response, reqwest::Error> =
             self.http_client.post(&url).body(query).send().await;
 

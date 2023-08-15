@@ -151,10 +151,6 @@ async fn departure(client: &EnTurClient, args: &DepartureArgs) {
         return;
     };
 
-    // let test = serde_json::to_string(departures).unwrap();
-
-    println!("{}", stopplace_response);
-
     if let Ok(stopplace) = serde_json::from_str::<
         btapi::wrapper::Wrapper<btapi::model::StopPlaceResponse>,
     >(&stopplace_response)
