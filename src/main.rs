@@ -1,12 +1,28 @@
 #![allow(non_snake_case)]
 
-use std::io::Write;
+use crate::api::{
+    model::{EstimatedCall, Feature, Geocode, Mode, StopPlaceResponse, TripPattern, TripResponse},
+    EnTurClient,
+};
+use crate::utils::{get_user_input, Wrapper};
 
-use btapi::{model::EstimatedCall, request::EnTurClient};
+mod api;
+mod utils;
+
 use chrono::{DateTime, Utc};
 use clap::{Args, Parser};
+use std::io::Write;
 
-mod btapi;
+#[tokio::main]
+async fn main() {
+    let cli: Cli = Cli::parse();
+    let client: EnTurClient = EnTurClient::new();
+
+    match &cli.action {
+        Action::Departure(args) => departure(&client, args).await,
+        Action::Trip(args) => trip(&client, args).await,
+    };
+}
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -36,7 +52,7 @@ enum Action {
     Trip(TripArgs),
 }
 
-fn print_choices(features: &[btapi::model::Feature]) {
+fn print_choices(features: &[Feature]) {
     for (i, feature) in features.iter().enumerate() {
         println!(
             "\x1b[32m{}\x1b[0m - \x1b[1m{}\x1b[0m ({} - {})",
@@ -50,7 +66,8 @@ fn print_choices(features: &[btapi::model::Feature]) {
 
 fn print_departures(departures: &[EstimatedCall]) -> () {
     for (_, call) in departures.iter().enumerate() {
-        let Ok(expected_departure) = DateTime::parse_from_rfc3339(&call.expectedDepartureTime) else {
+        let Ok(expected_departure) = DateTime::parse_from_rfc3339(&call.expectedDepartureTime)
+        else {
             return;
         };
 
@@ -89,7 +106,7 @@ async fn departure(client: &EnTurClient, args: &DepartureArgs) {
         return;
     };
 
-    let Ok(geo) = serde_json::from_str::<btapi::model::Geocode>(&geo_response) else {
+    let Ok(geo) = serde_json::from_str::<Geocode>(&geo_response) else {
         // Could not parse response - panic/noop
         return;
     };
@@ -106,7 +123,7 @@ async fn departure(client: &EnTurClient, args: &DepartureArgs) {
             geo.features.len()
         );
 
-        btapi::helpers::get_user_input(&mut input);
+        get_user_input(&mut input);
         print!("\x1b[0m");
     } else {
         input = "1".to_string();
@@ -128,7 +145,7 @@ async fn departure(client: &EnTurClient, args: &DepartureArgs) {
         );
         let _ = std::io::stdout().flush();
         input = "".to_string();
-        btapi::helpers::get_user_input(&mut input);
+        get_user_input(&mut input);
         print!("\x1b[0m");
     };
 
@@ -143,7 +160,7 @@ async fn departure(client: &EnTurClient, args: &DepartureArgs) {
     );
     println!();
 
-    let feature: &btapi::model::Feature = &geo.features[input - 1];
+    let feature: &Feature = &geo.features[input - 1];
     let now: String = Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
     let Ok(stopplace_response) = client.get_stop_place(&feature.properties.id, &now).await else {
@@ -151,10 +168,7 @@ async fn departure(client: &EnTurClient, args: &DepartureArgs) {
         return;
     };
 
-    if let Ok(stopplace) = serde_json::from_str::<
-        btapi::wrapper::Wrapper<btapi::model::StopPlaceResponse>,
-    >(&stopplace_response)
-    {
+    if let Ok(stopplace) = serde_json::from_str::<Wrapper<StopPlaceResponse>>(&stopplace_response) {
         print_departures(&stopplace.data.stopPlace.estimatedCalls);
     }
 }
@@ -165,7 +179,7 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
         return;
     };
 
-    let Ok(from) = serde_json::from_str::<btapi::model::Geocode>(&from_response) else {
+    let Ok(from) = serde_json::from_str::<Geocode>(&from_response) else {
         // Could not parse response - panic/noop
         return;
     };
@@ -175,7 +189,7 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
         return;
     };
 
-    let Ok(to) = serde_json::from_str::<btapi::model::Geocode>(&to_response) else {
+    let Ok(to) = serde_json::from_str::<Geocode>(&to_response) else {
         // Could not parse response - panic/noop
         return;
     };
@@ -204,7 +218,7 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
             from.features.len()
         );
 
-        btapi::helpers::get_user_input(&mut from_input);
+        get_user_input(&mut from_input);
         print!("\x1b[0m");
     } else {
         from_input = "1".to_string();
@@ -226,7 +240,7 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
         );
         let _ = std::io::stdout().flush();
         from_input = "".to_string();
-        btapi::helpers::get_user_input(&mut from_input);
+        get_user_input(&mut from_input);
         print!("\x1b[0m");
     };
 
@@ -241,7 +255,7 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
             to.features.len()
         );
 
-        btapi::helpers::get_user_input(&mut to_input);
+        get_user_input(&mut to_input);
         print!("\x1b[0m");
     } else {
         to_input = "1".to_string();
@@ -263,21 +277,25 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
         );
         let _ = std::io::stdout().flush();
         to_input = "".to_string();
-        btapi::helpers::get_user_input(&mut to_input);
+        get_user_input(&mut to_input);
         print!("\x1b[0m");
     };
 
-    let Ok(trip_response) = client.plan_trip(&from.features[from_input -1].properties.id, &to.features[to_input -1].properties.id).await else {
+    let Ok(trip_response) = client
+        .plan_trip(
+            &from.features[from_input - 1].properties.id,
+            &to.features[to_input - 1].properties.id,
+        )
+        .await
+    else {
         println!("Error retrieving trip response");
         return;
     };
 
     println!();
 
-    if let Ok(trip) =
-        serde_json::from_str::<btapi::wrapper::Wrapper<btapi::model::TripResponse>>(&trip_response)
-    {
-        let patterns: Vec<btapi::model::TripPattern> = trip.data.trip.tripPatterns;
+    if let Ok(trip) = serde_json::from_str::<Wrapper<TripResponse>>(&trip_response) {
+        let patterns: Vec<TripPattern> = trip.data.trip.tripPatterns;
 
         for (_i, pattern) in patterns.iter().enumerate() {
             let duration = chrono::Duration::seconds(pattern.duration);
@@ -310,7 +328,7 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
                     println!();
                 }
 
-                if leg.mode == btapi::model::Mode::foot {
+                if leg.mode == Mode::foot {
                     println!("      . ");
                     println!(
                         "      . Walk {} minutes",
@@ -359,15 +377,4 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
             println!();
         }
     }
-}
-
-#[tokio::main]
-async fn main() {
-    let cli: Cli = Cli::parse();
-    let client: btapi::request::EnTurClient = btapi::request::EnTurClient::new();
-
-    match &cli.action {
-        Action::Departure(args) => departure(&client, args).await,
-        Action::Trip(args) => trip(&client, args).await,
-    };
 }
