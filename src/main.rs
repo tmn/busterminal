@@ -1,22 +1,20 @@
 #![allow(non_snake_case)]
 
-use crate::api::{
-    model::{EstimatedCall, Feature, Geocode, Mode, StopPlaceResponse, TripPattern, TripResponse},
-    EnTurClient,
-};
-use crate::utils::{get_user_input, Wrapper};
+use std::io::{self, Write};
+mod client;
+mod model;
 
-mod api;
-mod utils;
+use model::{EstimatedCall, Feature, Geocode, Mode, StopPlaceResponse, TripPattern, TripResponse};
+
+use client::{EnTurClient, Wrapper};
 
 use chrono::{DateTime, Utc};
 use clap::{Args, Parser};
-use std::io::Write;
 
 #[tokio::main]
 async fn main() {
-    let cli: Cli = Cli::parse();
-    let client: EnTurClient = EnTurClient::new();
+    let cli = Cli::parse();
+    let client = EnTurClient::new();
 
     match &cli.action {
         Action::Departure(args) => departure(&client, args).await,
@@ -64,16 +62,42 @@ fn print_choices(features: &[Feature]) {
     }
 }
 
-fn print_departures(departures: &[EstimatedCall]) -> () {
-    for (_, call) in departures.iter().enumerate() {
+fn validate_choice(mut input: String, max_value: usize) -> usize {
+    loop {
+        match input.parse::<usize>() {
+            Ok(value) if value > 0 && value <= max_value => break value,
+            _ => {
+                print!(
+                    "\x1b[31mX\x1b[0m Invalid stop - pick another one (1 - {}): \x1b[1;36m",
+                    max_value
+                );
+                let _ = std::io::stdout().flush();
+                input.clear();
+                get_user_input(&mut input);
+                print!("\x1b[0m");
+            }
+        }
+    }
+}
+
+fn get_user_input(input: &mut String) {
+    io::stdin()
+        .read_line(input)
+        .expect("Did not enter a correct string");
+
+    *input = input.trim().to_string();
+}
+
+fn print_departures(departures: &[EstimatedCall]) {
+    for call in departures {
         let Ok(expected_departure) = DateTime::parse_from_rfc3339(&call.expectedDepartureTime)
         else {
-            return;
+            continue;
         };
 
-        let now: DateTime<chrono::Local> = chrono::offset::Local::now();
+        let now = chrono::offset::Local::now();
         let arrives_in_minutes: i64 = expected_departure.signed_duration_since(now).num_minutes();
-        let expected_departure_formated = expected_departure.format("%H:%M");
+        let expected_departure_formatted = expected_departure.format("%H:%M");
 
         if let Some(service_journey) = &call.serviceJourney {
             print!(
@@ -85,11 +109,11 @@ fn print_departures(departures: &[EstimatedCall]) -> () {
         println!(" {}", call.destinationDisplay.frontText);
 
         if arrives_in_minutes > 10 {
-            println!(" \x1b[1m{}\x1b[0m", expected_departure_formated);
+            println!(" \x1b[1m{}\x1b[0m", expected_departure_formatted);
         } else {
             println!(
                 " \x1b[1m{:?} min\x1b[0m ({})",
-                arrives_in_minutes, expected_departure_formated
+                arrives_in_minutes, expected_departure_formatted
             );
         }
 
@@ -126,28 +150,10 @@ async fn departure(client: &EnTurClient, args: &DepartureArgs) {
         get_user_input(&mut input);
         print!("\x1b[0m");
     } else {
-        input = "1".to_string();
+        input = String::from("1");
     }
 
-    let input = loop {
-        match input.parse::<usize>() {
-            Ok(value) => {
-                if value > 0 && value <= geo.features.len() {
-                    break value;
-                }
-            }
-            Err(_error) => { /* noop */ }
-        }
-
-        print!(
-            "\x1b[31mX\x1b[0m Invalid stop - pick another one (1 - {}): \x1b[1;36m",
-            geo.features.len()
-        );
-        let _ = std::io::stdout().flush();
-        input = "".to_string();
-        get_user_input(&mut input);
-        print!("\x1b[0m");
-    };
+    let input = validate_choice(input, geo.features.len());
 
     println!();
     println!("----------------------------------");
@@ -224,25 +230,7 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
         from_input = "1".to_string();
     }
 
-    let from_input = loop {
-        match from_input.parse::<usize>() {
-            Ok(value) => {
-                if value > 0 && value <= from.features.len() {
-                    break value;
-                }
-            }
-            Err(_error) => { /* noop */ }
-        }
-
-        print!(
-            "\x1b[31mX\x1b[0m Invalid stop - pick another one (1 - {}): \x1b[1;36m",
-            from.features.len()
-        );
-        let _ = std::io::stdout().flush();
-        from_input = "".to_string();
-        get_user_input(&mut from_input);
-        print!("\x1b[0m");
-    };
+    let from_input = validate_choice(from_input, from.features.len());
 
     if to.features.len() > 1 {
         println!("\x1b[1mTravel to\x1b[0m");
@@ -261,25 +249,7 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
         to_input = "1".to_string();
     }
 
-    let to_input = loop {
-        match to_input.parse::<usize>() {
-            Ok(value) => {
-                if value > 0 && value <= to.features.len() {
-                    break value;
-                }
-            }
-            Err(_error) => { /* noop */ }
-        }
-
-        print!(
-            "\x1b[31mX\x1b[0m Invalid stop - pick another one (1 - {}): \x1b[1;36m",
-            to.features.len()
-        );
-        let _ = std::io::stdout().flush();
-        to_input = "".to_string();
-        get_user_input(&mut to_input);
-        print!("\x1b[0m");
-    };
+    let to_input = validate_choice(to_input, to.features.len());
 
     let Ok(trip_response) = client
         .plan_trip(
@@ -297,7 +267,7 @@ async fn trip(client: &EnTurClient, args: &TripArgs) {
     if let Ok(trip) = serde_json::from_str::<Wrapper<TripResponse>>(&trip_response) {
         let patterns: Vec<TripPattern> = trip.data.trip.tripPatterns;
 
-        for (_i, pattern) in patterns.iter().enumerate() {
+        for pattern in patterns {
             let duration = chrono::Duration::seconds(pattern.duration);
             let hours = duration.num_hours();
             let minutes = duration.num_minutes() - (hours * 60);

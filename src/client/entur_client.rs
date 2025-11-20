@@ -1,5 +1,4 @@
 use http::header::{HeaderMap, HeaderValue};
-use reqwest;
 
 pub struct EnTurClient {
     http_client: reqwest::Client,
